@@ -1,0 +1,7 @@
+<?xml version='1.0'?>
+<stream:stream xmlns:stream='http://etherx.jabber.org/streams'
+	       xmlns:xml='http://www.w3.org/XML/1998/namespace'
+	       xmlns='jabber:client'
+	       xml:lang='en'
+	       version='1.0'
+	       to='{domainpart}'>

@@ -1,0 +1,9 @@
+<stream:stream xmlns:stream='http://etherx.jabber.org/streams'
+	       version='1.0'
+	       from='{domainpart}'
+	       id='.*'
+	       xmlns='jabber:client'>
+  <stream:features>
+    <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>
+    <session xmlns='urn:ietf:params:xml:ns:xmpp-session'/>
+  </stream:features>

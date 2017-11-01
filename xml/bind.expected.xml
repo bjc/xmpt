@@ -1,0 +1,5 @@
+<iq from='{bare_jid}' to='{full_jid}' id='bind' type='result'>
+  <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'>
+    <jid>{full_jid}</jid>
+  </bind>
+</iq>

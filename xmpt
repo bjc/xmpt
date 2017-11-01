@@ -1,0 +1,279 @@
+#!/usr/bin/env perl
+
+use Data::Dumper;
+use Getopt::Long;
+use IO::File;
+use IPC::Open2;
+use v5.10;
+
+use strict;
+use warnings;
+
+my $configpath   = 'localhost.conf';
+my $testplanpath = 'testplan';
+my $templatepath = 'xml';
+my $timeout      = 5;
+my $verbose;
+my $help;
+
+GetOptions('config|c=s'    => \$configpath,
+	   'testplan|p=s'  => \$testplanpath,
+	   'templates|d=s' => \$templatepath,
+	   'timeout|t=i'   => \$timeout,
+	   'verbose|v'     => \$verbose,
+	   'help|h'        => \$help) || usage(1);
+usage(0) if $help;
+
+my %conf = read_conf($configpath);
+my @plans = load_plans($testplanpath, $templatepath);
+
+my $curstep;
+local $SIG{CHLD} = sub {
+  my $suffix = "before test plan started.";
+  $suffix = "in $curstep step." if $curstep;
+  die "Command '@ARGV' terminated $suffix\n"
+};
+
+my ($inh, $outh) = (\*STDIN, \*STDOUT);
+my $pid;
+if (@ARGV) {
+  $inh = $outh = undef;
+  $pid = open2($inh, $outh, join(' ', @ARGV));
+}
+binmode($inh, ':utf8');
+binmode($outh, ':utf8');
+autoflush $outh 1;
+eval_in($inh, $outh, \%conf, @plans);
+waitpid($pid, 0) if $pid;
+
+# TODO: swap over to Pod::Usage.
+sub usage {
+  print STDERR "Usage: $0 [-v] [-c config] [-p testplan] [-d templatedir] [-t seconds] [command]\n";
+  exit shift;
+}
+
+sub read_conf {
+  my ($filen) = @_;
+
+  my $fh = new IO::File("<$filen") ||
+    die "Couldn't open $filen for reading: $!\n";
+  map {
+    chomp;
+    s/\#.*$//;
+    map { s/^\s*([^\s]+)\s*$/$1/; $_ } split(/=/, $_, 2);
+  } <$fh>;
+}
+
+our $testplan;
+our $line;
+sub load_plans {
+  local $testplan = shift;
+  my $dir = shift;
+
+  my $planfh = new IO::File($testplan) ||
+    die "Couldn't open $testplan for reading: $!.\n";
+  local $line = 0;
+  map {
+    $line++;
+    chomp;
+
+    my %rc = (name => $_);
+    $rc{send} = parse_template("$dir/$_.xml");
+    if (-f "$dir/$_.expected.xml") {
+      $rc{expect} = parse_template("$dir/$_.expected.xml");
+    }
+    \%rc;
+  } <$planfh>
+}
+
+sub parse_template {
+  my ($fn) = @_;
+
+  my $fh = new IO::File($fn) ||
+    die "Couldn't open $fn for reading at line $line in $testplan: $!.\n";
+  binmode($fh, ':utf8');
+
+  my @parts = split /([{}]|\n)/, do { local $/; <$fh> };
+  my $intext = 1;
+  my $curthunk;
+  my $line = 1;
+  my $thunkstart;
+  my @rc;
+  while (@parts) {
+    my $tok = shift @parts;
+
+    $line++ if $tok =~ /\n/;
+
+    if ($intext) {
+      if ($tok =~ /{/) {
+	$thunkstart = $line;
+	$intext = 0;
+      } else {
+	push @rc, text($tok);
+      }
+    } else {
+      if ($tok =~ /}/) {
+	$intext = 1;
+	push @rc, thunk($curthunk, $fn, $thunkstart);
+	$curthunk = '';
+      } else {
+	$curthunk .= $tok;
+      }
+    }
+  }
+
+  die "Error in $fn: template ended inside thunk started at line $thunkstart.\n" .
+    "\tDid you forget a '}'?\n" unless $intext;
+  \@rc;
+}
+
+sub nothing { ["text", sub { "" }] }
+
+sub text {
+  my $t = shift;
+  ['text', sub { $t }];
+}
+
+sub thunk {
+  my ($b, $fn, $line) = @_;
+  ['thunk',
+   sub {
+     package evalpkg;
+     local $evalpkg::arg = shift;
+     my $rc = eval $b;
+     $@ &&
+       die "Error in $fn:$line: $@\ttestplan: $testplanpath\n\tconfig: $configpath\n";
+     $rc;
+   }]
+}
+
+sub eval_in {
+  local ($evalpkg::in, $evalpkg::out) = (shift, shift);
+  local %evalpkg::env = %{shift @_};
+  my @plans = @_;
+
+  foreach my $k (keys %evalpkg::env) {
+    # TODO: put $k in the symbol table directly, rather than calling
+    # string eval.
+    eval "package evalpkg; sub $k() { env('$k') };";
+  }
+
+  eval {
+    foreach my $plan (@plans) {
+      $curstep = $plan->{name};
+      print STDERR "=> Executing $curstep step.\n" if $verbose;
+      do_send($plan->{name}, @{$plan->{send}});
+      do_recv($plan->{name}, @{$plan->{expect}}) if $plan->{expect};
+    }
+  };
+  $@ && die $@;
+}
+
+sub do_send {
+  my $name = shift;
+  my $s = join('', (map { $_->[1]->() } @_));
+  if ($verbose) {
+    my $l = $s;
+    chomp $l;
+    print STDERR "SEND: $l\n" unless $l =~ /^\s*$/;
+  }
+  print $evalpkg::out $s;
+}
+
+sub do_recv {
+  my $name = shift;
+  my (@reparts, @thunks);
+  foreach my $plan (@_) {
+    # Text is matched explicitly, thunks are treated as wildcards,
+    # with the match sent as an argument.
+    if ($plan->[0] eq 'text') {
+      my $t = $plan->[1]->();
+      push @reparts, $t;
+    } else {
+      push @reparts, "(.*)";
+      push @thunks, $plan->[1];
+    }
+  }
+  my $re = join '', @reparts;
+  # TODO: add CLI options for whitespace/quote substitution.
+  $re =~ s/\s+/\\s\*/g;
+  $re =~ s/'|"/\['"\]/g;
+
+  # Need a persistent buffer for reading, because we may get more data
+  # than needed when matching for expected output, so stash it here
+  # for subsequent reads after the current matcher is done.
+  state $readbuf = '';
+  local $SIG{ALRM} = sub {
+    my $b = $readbuf;
+    chomp $b;
+    die "Timed out waiting for match in $name step. Current read buffer:\n$b\n";
+  };
+  alarm $timeout;
+  my @matches;
+  while (1) {
+    @matches = ($readbuf =~ /$re/);
+    if (@matches >= @thunks) {
+      $readbuf = $';
+      last;
+    }
+    my $r;
+    my $n = sysread $evalpkg::in, $r, 2048;
+    die "Error reading data while waiting for match in $name step: $!.\n" if $n == -1;
+    die "End of file while waiting for match in $name step.\n" unless $n;
+    if ($verbose) {
+      my $l = $r;
+      chomp $l;
+      print STDERR "RECV: $l\n"
+    }
+    $readbuf .= $r;
+  }
+  alarm 0;
+
+  for (my $i = 0; $i < @thunks; $i++) {
+    $thunks[$i]->($matches[$i]);
+  }
+}
+
+sub assert_arg {
+  my ($name, $want) = @_;
+  if ($evalpkg::arg) {
+    my $got = $evalpkg::arg;
+    die "Bad $name (got '$got', want: '$want').\n" if $got ne $want;
+  }
+  $want;
+}
+
+# Stick actual execution in its own package so you don't accidentally
+# clobber stuff in main while running templates.
+package evalpkg;
+
+use MIME::Base64;
+
+our ($in, $out);
+our %env;
+our $arg;
+
+sub env {
+  my $k = shift;
+  main::assert_arg($k, $env{$k});
+}
+
+sub bare_jid() {
+  main::assert_arg('bare_jid', (split /\//, $env{full_jid}, 2)[0]);
+}
+
+sub localpart() {
+  main::assert_arg('localpart', (split /\@/, $env{full_jid}, 2)[0]);
+}
+
+sub domainpart() {
+  main::assert_arg('domainpart', (split /\//, (split /\@/, $env{full_jid}, 2)[1])[0]);
+}
+
+sub resourcepart() {
+  main::assert_arg('resourcepart', (split /\//, $env{full_jid}, 2)[1]);
+}
+
+sub plain_auth() {
+  MIME::Base64::encode(join("\0", "", bare_jid(), $env{password}));
+}

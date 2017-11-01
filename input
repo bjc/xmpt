@@ -1,0 +1,29 @@
+<stream:stream xmlns:stream='http://etherx.jabber.org/streams'
+	       version='1.0'
+	       from='localhost'
+	       id='somestreamid'
+	       xmlns='jabber:client'>
+  <stream:features>
+    <mechanisms xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>
+      <mechanism>SCRAM-SHA-1</mechanism>
+      <mechanism>PLAIN</mechanism>
+    </mechanisms>
+    <auth xmlns='http://jabber.org/features/iq-auth'/>
+  </stream:features>
+<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'></success>
+<stream:stream xmlns:stream='http://etherx.jabber.org/streams'
+	       version='1.0'
+	       from='localhost'
+	       id='somestreamid'
+	       xmlns='jabber:client'>
+  <stream:features>
+    <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>
+    <session xmlns='urn:ietf:params:xml:ns:xmpp-session'/>
+  </stream:features>
+<iq from='test0@localhost' to='test0@localhost/xmpt' id='bind' type='result'>
+  <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'>
+    <jid>test0@localhost/xmpt</jid>
+  </bind>
+</iq>
+<iq from='test0@localhost' to='test0@localhost/xmpt' id='session' type='result'/>
+</stream>

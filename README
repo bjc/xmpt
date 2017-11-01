@@ -1,0 +1,115 @@
+# -*- mode: org -*-
+
+* Overview
+A test consists of a config file, which specifies variables available
+during the execution of the test, a test plan file, which dictates the
+order of the test, and a series of templates, referenced by the test
+plan, which contain the data to be read and optionally matched. See
+the Testing section for an example of how to use it.
+
+This is intended to be used for request-response style interactions,
+where we send a request and wait for a matching response. However, not
+all requests stimulate a response, so response matching is optional.
+
+By default this program reads from standard input and writes to
+standard output, but if a command line is supplied as the final
+arguments, that will be used instead. This is useful with netcat for
+network server testing.
+
+* Config File
+The format of the config file is a list of arbitrary '$key=$value'
+pairs. Comments start with '#' and continue until the end of the line.
+
+Config keys are auto-interned as nullary functions for use in
+templates.
+
+* Test Plan
+The test plan file is a list of files to run within the templates
+directory (which defaults to 'xml'), suffixed by '.xml' for sending
+data, and, if it exists, suffixed by '.expected.xml' for matching
+responses. Thus a test plan line which consists of 'foo' would send
+data according to the template in 'xml/foo.xml' and would then wait
+for data matching the template in 'xml/foo.expected.xml' if that file
+exists.
+
+The XML stuff is not ideal, since this program doesn't care about the
+format of the data being read or written, but since it was developed
+for XMPP testing, that's what it got. This may change in the future.
+
+* Templates
+Templates are fundamentally a big regexp with thunks of Perl code
+contained within '{}' interpolated at run-time. While templates are
+used for both sending data and matching received data, the use of
+thunks changes depending on context.
+
+** Send context
+In send context (e.g., 'foo.xml'), the code called may return a string
+which will replace the thunk in the template. Assuming you have a
+function defined called bar:
+#+BEGIN
+sub bar() { "text" };
+#+END
+
+and a template:
+#+BEGIN
+Here is some {bar}!
+#+END
+
+The output would be:
+#+BEGIN
+Here is some text!
+#+END
+
+The code is arbitrary Perl 5, and doesn't have to return a string, but
+if it returns anything it should be something that can be converted to
+a string automatically, or you're likely to get an error.
+
+** Match context
+During matching, the template is processed as a regexp, where thunks
+are treated as captured wildcards (i.e., the pattern '(.*)'). After a
+successful match, the value of the capture is made available to the
+thunk in the $arg variable. This is so that the value can be compared
+with an expected value, or that more complex computation can be done
+(such as for challenge-response authentication).
+
+It is assumed that there will be cases where data that you're not
+interested in can be interleaved in data that you are interested in
+(e.g., keepalives) and match templates will ignore them.
+
+** Evaluation package
+Templates are evaluated in their own package, outside of main, to
+better isolate their side-effects. Some package-level globals are made
+available:
+  * $in - The filehandle we're reading match data from.
+  * $out - The filehandle we're sending data to.
+  * %env - The key-value pairs from the loaded config file.
+  * $arg - The value of the capture group for this thunk (in match
+           context)
+
+This package is never reinitialized during the test plan execution,
+allowing one template to modify data for subsequent templates.
+
+** XML
+In order to make XML processing easier, any type of quote, throughout
+the text is turned into the pattern ['"] during match
+context. Similarly, whitespace is condensed and replaced with the \s*
+pattern.
+
+Do note that while this program is intended to be used primarily with
+XML, it's almost totally ignorant of XML as a format besides the above
+substitutions. That means that things like attribute order within a
+tag matter, and we cannot normalize '<foo></foo>' to '<foo/>' (at
+least unless you write a big tangle of regexp in the template itself).
+
+* Testing
+The file 'testplan' contains a sample plan for a basic XMPP session
+given 'localhost.conf', using the files in the 'xml' directory. The
+corresponding server data is in 'input'. So to run a quick-and-dirty
+test, execute:
+
+#+BEGIN
+% xmpt -c localhost.conf -p testplan < input
+#+END
+
+At some point, these things should be moved into a 't' directory and
+used with Test::Harness.

@@ -1,0 +1,3 @@
+<iq type='set' id='session'>
+  <session xmlns='urn:ietf:params:xml:ns:xmpp-session'/>
+</iq>

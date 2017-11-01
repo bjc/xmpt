@@ -1,0 +1,5 @@
+<iq type='set' id='bind'>
+  <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'>
+    <resource>{resourcepart}</resource>
+  </bind>
+</iq>

@@ -1,0 +1,12 @@
+<stream:stream xmlns:stream='http://etherx.jabber.org/streams'
+	       version='1.0'
+	       from='{domainpart}'
+	       id='.*'
+	       xmlns='jabber:client'>
+  <stream:features>
+    <mechanisms xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>
+      <mechanism>SCRAM-SHA-1</mechanism>
+      <mechanism>PLAIN</mechanism>
+    </mechanisms>
+    <auth xmlns='http://jabber.org/features/iq-auth'/>
+  </stream:features>
