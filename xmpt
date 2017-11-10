@@ -9,6 +9,8 @@ use v5.10;
 use strict;
 use warnings;
 
+our $VERSION = '0';
+
 my $configpath   = 'localhost.conf';
 my $testplanpath = 'testplan';
 my $templatepath = 'xml';
