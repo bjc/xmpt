@@ -43,6 +43,7 @@ if (@ARGV) {
 }
 binmode($inh, ':utf8');
 binmode($outh, ':utf8');
+
 eval_in($inh, $outh, \%conf, @plans);
 waitpid($pid, 0) if $pid;
 
@@ -106,6 +107,10 @@ sub parse_template {
 
     if ($intext) {
       if ($tok =~ /{/) {
+        if ($line =~ /^#/) {
+          do { my $tok = shift @parts } until $tok = '}';
+          next;
+        }
 	$thunkstart = $line;
 	$intext = 0;
       } else {
