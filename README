@@ -108,7 +108,7 @@ corresponding server data is in 'input'. So to run a quick-and-dirty
 test, execute:
 
 #+BEGIN
-% xmpt -c localhost.conf -p testplan < input
+% xmpt -c t/fixtures/localhost.conf -p t/fixtures/testplan < t/fixtures/input
 #+END
 
 At some point, these things should be moved into a 't' directory and
