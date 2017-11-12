@@ -26,6 +26,8 @@ GetOptions('config|c=s'    => \$configpath,
 	   'help|h'        => \$help) || usage(1);
 usage(0) if $help;
 
+$| = 1;
+
 my %conf = read_conf($configpath);
 my @plans = load_plans($testplanpath, $templatepath);
 
@@ -41,7 +43,6 @@ if (@ARGV) {
 }
 binmode($inh, ':utf8');
 binmode($outh, ':utf8');
-autoflush $outh 1;
 eval_in($inh, $outh, \%conf, @plans);
 waitpid($pid, 0) if $pid;
 
