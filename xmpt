@@ -27,12 +27,9 @@ usage(0) if $help;
 my %conf = read_conf($configpath);
 my @plans = load_plans($testplanpath, $templatepath);
 
-my $curstep;
-local $SIG{CHLD} = sub {
-  my $suffix = "before test plan started.";
-  $suffix = "in $curstep step." if $curstep;
-  die "Command '@ARGV' terminated $suffix\n"
-};
+# Ignore SIGPIPE at the top level, since it only matters when reading
+# or writing to the subprocess.
+local $SIG{PIPE} = sub {};
 
 my ($inh, $outh) = (\*STDIN, \*STDOUT);
 my $pid;
@@ -160,8 +157,7 @@ sub eval_in {
 
   eval {
     foreach my $plan (@plans) {
-      $curstep = $plan->{name};
-      print STDERR "=> Executing $curstep step.\n" if $verbose;
+      print STDERR "=> Executing $plan->{name} step.\n" if $verbose;
       do_send($plan->{name}, @{$plan->{send}});
       do_recv($plan->{name}, @{$plan->{expect}}) if $plan->{expect};
     }
@@ -177,6 +173,11 @@ sub do_send {
     chomp $l;
     print STDERR "SEND: $l\n" unless $l =~ /^\s*$/;
   }
+
+  # TODO: make write SIGPIPE configurable, but for now just ignore it.
+  local $SIG{PIPE} = sub {
+    print STDERR "Warning: SIGPIPE received from '@ARGV' while writing in $name step.\n"
+  };
   print $evalpkg::out $s;
 }
 
@@ -207,6 +208,9 @@ sub do_recv {
     my $b = $readbuf;
     chomp $b;
     die "Timed out waiting for match in $name step. Current read buffer:\n$b\n";
+  };
+  local $SIG{PIPE} = sub {
+    die "SIGPIPE received from '@ARGV' while matching in $name step.\n";
   };
   alarm $timeout;
   my @matches;
