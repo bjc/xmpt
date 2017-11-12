@@ -245,7 +245,7 @@ sub assert_arg {
 
 # Stick actual execution in its own package so you don't accidentally
 # clobber stuff in main while running templates.
-package evalpkg;
+package evalpkg; # TODO: Make package name dynamic.
 
 use MIME::Base64;
 
@@ -276,4 +276,8 @@ sub resourcepart() {
 
 sub plain_auth() {
   MIME::Base64::encode(join("\0", "", bare_jid(), $env{password}));
+}
+
+sub stream() {
+  main::assert_arg('stream', 'stream:stream');
 }

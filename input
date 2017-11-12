@@ -26,4 +26,4 @@
   </bind>
 </iq>
 <iq from='test0@localhost' to='test0@localhost/xmpt' id='session' type='result'/>
-</stream>
+</stream:stream>
