@@ -2,6 +2,8 @@
 
 use Test::More tests => 3;
 
+use IO::File;
+
 use strict;
 use warnings;
 
@@ -9,7 +11,7 @@ my $config = 't/fixtures/localhost.conf';
 my $testplan = 't/fixtures/testplan';
 my $input = 't/fixtures/input';
 
-subtest 'standard input', sub {
+do {
   my $cmd = "./xmpt -c $config -p $testplan";
   my $xmptfh = new IO::File("|$cmd") or BAIL_OUT "Can't run '$cmd': $!.\n";
   my $inputfh = new IO::File($input) or
@@ -22,7 +24,7 @@ subtest 'standard input', sub {
   ok($? == 0, 'Standard input redirect');
 };
 
-subtest 'timeout', sub {
+do {
   my $cmd = "./xmpt -t 1 -c $config -p $testplan cat 2>/dev/null";
   local $SIG{ALRM} = sub { fail("Timed out running $cmd.") };
   alarm 5;
@@ -30,7 +32,7 @@ subtest 'timeout', sub {
   ok(($? >> 8) != 0, 'Timeout test');
 };
 
-subtest 'I/O redirected to cat', sub {
+do {
   my $cmd = "./xmpt -c $config -p $testplan cat $input 2>/dev/null";
   local $SIG{ALRM} = sub { fail("Timed out running $cmd.") };
   alarm 10;
