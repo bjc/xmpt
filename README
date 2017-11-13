@@ -108,5 +108,5 @@ corresponding server data is in 'input'. So to run a quick-and-dirty
 test, execute:
 
 #+BEGIN
-% xmpt -c t/fixtures/localhost.conf -p t/fixtures/testplan < t/fixtures/input
+% xmpt -e t/fixtures/sample.env -p t/fixtures/sample.plan < t/fixtures/sample.input
 #+END

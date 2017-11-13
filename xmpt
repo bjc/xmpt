@@ -13,7 +13,7 @@ use warnings;
 our $VERSION = '0';
 
 my $verbose;
-my $configpath   = 'localhost.conf';
+my $envpath      = 'localhost.env';
 my $timeout      = 5;
 my $testplanpath = 'testplan';
 my $templatepath = 'xml';
@@ -21,7 +21,7 @@ my @libs;
 my $help;
 
 GetOptions('verbose|v'     => \$verbose,
-           'config|c=s'    => \$configpath,
+           'env|e=s'       => \$envpath,
 	   'timeout|t=i'   => \$timeout,
 	   'testplan|p=s'  => \$testplanpath,
 	   'templates|d=s' => \$templatepath,
@@ -31,7 +31,7 @@ usage(0) if $help;
 
 $| = 1;
 
-my %conf = read_conf($configpath);
+local %evalpkg::env = read_env($envpath);
 my @plans = load_plans($testplanpath, $templatepath);
 
 # Ignore SIGPIPE at the top level, since it only matters when reading
@@ -47,16 +47,16 @@ if (@ARGV) {
 binmode($inh, ':utf8');
 binmode($outh, ':utf8');
 
-eval_in($inh, $outh, \%conf, @plans);
+eval_in($inh, $outh, @plans);
 waitpid($pid, 0) if $pid;
 
 # TODO: swap over to Pod::Usage.
 sub usage {
-  print STDERR "Usage: $0 [-hv] [-c config] [-t seconds] [-p testplan] [-d templatedir] [-l libpath] [command]\n";
+  print STDERR "Usage: $0 [-hv] [-e envpath] [-t seconds] [-p testplan] [-d templatedir] [-l libpath] [command]\n";
   exit shift;
 }
 
-sub read_conf {
+sub read_env {
   my ($filen) = @_;
 
   my $fh = new IO::File("<$filen") ||
@@ -152,14 +152,13 @@ sub thunk {
      local $evalpkg::arg = shift;
      my $rc = eval $b;
      $@ &&
-       die "Error in $fn:$line: $@\ttestplan: $testplanpath\n\tconfig: $configpath\n";
+       die "Error in $fn:$line: $@\ttestplan: $testplanpath\n\tenvpath: $envpath\n";
      $rc;
    }]
 }
 
 sub eval_in {
   local ($evalpkg::in, $evalpkg::out) = (shift, shift);
-  local %evalpkg::env = %{shift @_};
   my @plans = @_;
 
   foreach my $k (keys %evalpkg::env) {
