@@ -215,7 +215,7 @@ sub do_recv {
   local $SIG{ALRM} = sub {
     my $b = $readbuf;
     chomp $b;
-    die "Timed out waiting for match in $name step. Current read buffer:\n$b\n";
+    die "Timed out waiting for match in $name step. Current read buffer:\n$b\nMatcher:\n$re\n";
   };
   local $SIG{PIPE} = sub {
     die "SIGPIPE received from '@ARGV' while matching in $name step.\n";
