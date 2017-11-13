@@ -11,19 +11,21 @@ use warnings;
 
 our $VERSION = '0';
 
+my $verbose;
 my $configpath   = 'localhost.conf';
+my $timeout      = 5;
 my $testplanpath = 'testplan';
 my $templatepath = 'xml';
-my $timeout      = 5;
-my $verbose;
+my @libs;
 my $help;
 
-GetOptions('config|c=s'    => \$configpath,
-	   'testplan|p=s'  => \$testplanpath,
-	   'templates|d=s' => \$templatepath,
-	   'timeout|t=i'   => \$timeout,
-	   'verbose|v'     => \$verbose,
-	   'help|h'        => \$help) || usage(1);
+GetOptions('verbose|v'      => \$verbose,
+           'config|c=s'     => \$configpath,
+	   'timeout|t=i'    => \$timeout,
+	   'testplan|p=s'   => \$testplanpath,
+	   'templates|d =s' => \$templatepath,
+           'lib|l=s'        => \@libs,
+	   'help|h'         => \$help) || usage(1);
 usage(0) if $help;
 
 $| = 1;
@@ -49,7 +51,7 @@ waitpid($pid, 0) if $pid;
 
 # TODO: swap over to Pod::Usage.
 sub usage {
-  print STDERR "Usage: $0 [-v] [-c config] [-p testplan] [-d templatedir] [-t seconds] [command]\n";
+  print STDERR "Usage: $0 [-hv] [-c config] [-t seconds] [-p testplan] [-d templatedir] [-l libpath] [command]\n";
   exit shift;
 }
 
@@ -164,6 +166,7 @@ sub eval_in {
   }
 
   eval {
+    package evalpkg { require $_ for @libs };
     foreach my $plan (@plans) {
       print STDERR "=> Executing $plan->{name} step.\n" if $verbose;
       do_send($plan->{name}, @{$plan->{send}});
