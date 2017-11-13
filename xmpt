@@ -4,11 +4,12 @@ use Data::Dumper;
 use Getopt::Long;
 use IO::File;
 use IPC::Open2;
-use v5.10;
+use POSIX;
 use utf8;
 
 use strict;
 use warnings;
+use v5.10;
 
 our $VERSION = '0';
 
@@ -170,7 +171,7 @@ sub eval_in {
   eval {
     require $_ for @libs;
     foreach my $plan (@plans) {
-      print STDERR "[$$] => Executing $plan->{name} step.\n" if $verbose;
+      verbose("=> Executing $plan->{name} step.");
       do_send($plan->{name}, @{$plan->{send}});
       do_recv($plan->{name}, @{$plan->{expect}}) if $plan->{expect};
     }
@@ -181,11 +182,7 @@ sub eval_in {
 sub do_send {
   my $name = shift;
   my $s = join('', (map { $_->[1]->() } @_));
-  if ($verbose) {
-    my $l = $s;
-    chomp $l;
-    print STDERR "[$$] SEND: $l\n" unless $l =~ /^\s*$/;
-  }
+  verbose("SEND: $s");
 
   # TODO: make write SIGPIPE configurable, but for now just ignore it.
   local $SIG{PIPE} = sub {
@@ -237,17 +234,21 @@ sub do_recv {
     my $n = sysread $evalpkg::in, $r, 2048;
     die "Error reading data while waiting for match in $name step: $!.\n" if $n == -1;
     die "End of file while waiting for match in $name step.\n" unless $n;
-    if ($verbose) {
-      my $l = $r;
-      chomp $l;
-      print STDERR "[$$] RECV: $l\n"
-    }
+    verbose("RECV: $r");
     $readbuf .= $r;
   }
   alarm 0;
 
   for (my $i = 0; $i < @thunks; $i++) {
     $thunks[$i]->($matches[$i]);
+  }
+}
+
+sub verbose {
+  if ($verbose) {
+    my $msg = shift;
+    chomp $msg;
+    print STDERR strftime('%Y-%m-%d %H:%M:%S', localtime) . " [$$] $msg\n";
   }
 }
 
