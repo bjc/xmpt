@@ -19,13 +19,13 @@ my $templatepath = 'xml';
 my @libs;
 my $help;
 
-GetOptions('verbose|v'      => \$verbose,
-           'config|c=s'     => \$configpath,
-	   'timeout|t=i'    => \$timeout,
-	   'testplan|p=s'   => \$testplanpath,
-	   'templates|d =s' => \$templatepath,
-           'lib|l=s'        => \@libs,
-	   'help|h'         => \$help) || usage(1);
+GetOptions('verbose|v'     => \$verbose,
+           'config|c=s'    => \$configpath,
+	   'timeout|t=i'   => \$timeout,
+	   'testplan|p=s'  => \$testplanpath,
+	   'templates|d=s' => \$templatepath,
+           'lib|l=s'       => \@libs,
+	   'help|h'        => \$help) || usage(1);
 usage(0) if $help;
 
 $| = 1;
