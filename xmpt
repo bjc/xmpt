@@ -170,7 +170,7 @@ sub eval_in {
   eval {
     require $_ for @libs;
     foreach my $plan (@plans) {
-      print STDERR "=> Executing $plan->{name} step.\n" if $verbose;
+      print STDERR "[$$] => Executing $plan->{name} step.\n" if $verbose;
       do_send($plan->{name}, @{$plan->{send}});
       do_recv($plan->{name}, @{$plan->{expect}}) if $plan->{expect};
     }
@@ -184,7 +184,7 @@ sub do_send {
   if ($verbose) {
     my $l = $s;
     chomp $l;
-    print STDERR "SEND: $l\n" unless $l =~ /^\s*$/;
+    print STDERR "[$$] SEND: $l\n" unless $l =~ /^\s*$/;
   }
 
   # TODO: make write SIGPIPE configurable, but for now just ignore it.
@@ -240,7 +240,7 @@ sub do_recv {
     if ($verbose) {
       my $l = $r;
       chomp $l;
-      print STDERR "RECV: $l\n"
+      print STDERR "[$$] RECV: $l\n"
     }
     $readbuf .= $r;
   }
