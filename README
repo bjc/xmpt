@@ -90,8 +90,8 @@ This package is never reinitialized during the test plan execution,
 allowing one template to modify data for subsequent templates.
 
 ** XML
-In order to make XML processing easier, any type of quote, throughout
-the text is turned into the pattern ['"] during match
+In order to make XML processing easier any type of quote, throughout
+the text, is turned into the pattern ['"] during match
 context. Similarly, whitespace is condensed and replaced with the \s*
 pattern.
 
@@ -110,6 +110,3 @@ test, execute:
 #+BEGIN
 % xmpt -c t/fixtures/localhost.conf -p t/fixtures/testplan < t/fixtures/input
 #+END
-
-At some point, these things should be moved into a 't' directory and
-used with Test::Harness.
