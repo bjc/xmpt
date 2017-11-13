@@ -1,7 +1,3 @@
-Makefile
-Makefile.old
-MYMETA.json
-MYMETA.yml
+Build
+_build
 blib
-pm_to_blib
-reuasmb.conf
