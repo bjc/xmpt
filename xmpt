@@ -61,6 +61,7 @@ sub read_conf {
 
   my $fh = new IO::File("<$filen") ||
     die "Couldn't open $filen for reading: $!\n";
+  binmode($fh, ':utf8');
   map {
     chomp;
     s/\#.*$//;
@@ -147,6 +148,7 @@ sub thunk {
   ['thunk',
    sub {
      package evalpkg;
+     use utf8;
      local $evalpkg::arg = shift;
      my $rc = eval $b;
      $@ &&
