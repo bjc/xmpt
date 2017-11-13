@@ -169,7 +169,7 @@ sub eval_in {
   }
 
   eval {
-    package evalpkg { require $_ for @libs };
+    require $_ for @libs;
     foreach my $plan (@plans) {
       print STDERR "=> Executing $plan->{name} step.\n" if $verbose;
       do_send($plan->{name}, @{$plan->{send}});
