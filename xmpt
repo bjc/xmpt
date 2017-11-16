@@ -186,7 +186,7 @@ sub do_send {
 
   # TODO: make write SIGPIPE configurable, but for now just ignore it.
   local $SIG{PIPE} = sub {
-    print STDERR "Warning: SIGPIPE received from '@ARGV' while writing in $name step.\n"
+    warning("SIGPIPE received from '@ARGV' while writing in $name step.\n");
   };
   print $evalpkg::out $s;
 }
@@ -246,12 +246,22 @@ sub do_recv {
   }
 }
 
+sub error {
+  _l("ERROR: " . shift);
+}
+
+sub warning {
+  _l("Warning: " . shift);
+}
+
 sub verbose {
-  if ($verbose) {
-    my $msg = shift;
-    chomp $msg;
-    print STDERR strftime('%Y-%m-%d %H:%M:%S', localtime) . " [$$] $msg\n";
-  }
+  _l(shift) if $verbose;
+}
+
+sub _l {
+  my $msg = shift;
+  chomp $msg;
+  print STDERR strftime('%Y-%m-%d %H:%M:%S', localtime) . " [$$] $msg\n";
 }
 
 sub assert_arg {
