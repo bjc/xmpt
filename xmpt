@@ -194,6 +194,7 @@ sub do_send {
 sub do_recv {
   my $name = shift;
   my (@reparts, @thunks);
+  my $i = 0;
   foreach my $plan (@_) {
     # Text is matched explicitly, thunks are treated as wildcards,
     # with the match sent as an argument.
@@ -201,8 +202,9 @@ sub do_recv {
       my $t = $plan->[1]->();
       push @reparts, $t;
     } else {
-      push @reparts, "(.*)";
+      push @reparts, "(?<thunk$i>.*)";
       push @thunks, $plan->[1];
+      $i++;
     }
   }
   my $re = join '', @reparts;
@@ -223,11 +225,11 @@ sub do_recv {
     die "SIGPIPE received from '@ARGV' while matching in $name step.\n";
   };
   alarm $timeout;
-  my @matches;
+  my %matches;
   while (1) {
-    @matches = ($readbuf =~ /$re/);
-    if (@matches >= @thunks) {
+    if ($readbuf =~ /$re/) {
       $readbuf = $';
+      %matches = %+;
       last;
     }
     my $r;
@@ -240,7 +242,7 @@ sub do_recv {
   alarm 0;
 
   for (my $i = 0; $i < @thunks; $i++) {
-    $thunks[$i]->($matches[$i]);
+    $thunks[$i]->($matches{"thunk$i"});
   }
 }
 
